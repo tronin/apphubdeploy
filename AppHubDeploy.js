@@ -13,7 +13,8 @@ var readlineSync = require('readline-sync');
 var APP_HUB_ID;
 var APP_HUB_SECRET;
 var BUILD_FILE_NAME = 'AppHubBuild_' + Date.now() + '.zip';
-var BUILD_FILE_PATH = path.resolve('./', BUILD_FILE_NAME);
+var BUILD_FILE_PREFIX = './build/';
+var BUILD_FILE_PATH = path.resolve(BUILD_FILE_PREFIX, BUILD_FILE_NAME);
 var BUILD_URL_BASE  = 'https://dashboard.apphub.io/projects/';
 var BUILD_URL;
 
@@ -55,7 +56,16 @@ if (program.openBuildUrl)
 process.exit(0);
 
 
+// add git description for build
+function getGitDescription() {
+	var revision = require('child_process')
+		.execSync('git log -1 --oneline')
+		.toString().trim();
 
+	console.log('Build description is ', revision);
+
+	return revision;
+}
 
 // Private Functions
 
@@ -124,12 +134,12 @@ function readPreviouslySavedAppHubCredentials() {
 function build() {
   console.log('');
   process.stdout.write('Building... ');
-  
+
   var appHubBuildOptions = ["--verbose"]
   if (program.plistFile) { appHubBuildOptions.push("--plist-file " + program.plistFile) }
   if (program.entryFile) { appHubBuildOptions.push("--entry-file " + program.entryFile) }
   if (program.target == "debug") { appHubBuildOptions.push("--dev") }
-  appHubBuildOptions.push("--output-zip " + BUILD_FILE_NAME)
+  appHubBuildOptions.push("--output-zip " + BUILD_FILE_PREFIX + BUILD_FILE_NAME)
 
   buildResult = require('child_process').execSync( './node_modules/.bin/apphub build ' + appHubBuildOptions.join(" ") ).toString();
 
@@ -154,8 +164,11 @@ function deploy() {
     if (program.buildName)
       metaData['name'] = program.buildName;
 
-    if (program.buildDescription)
+    if (!program.buildDescription && getGitDescription().length > 0) {
+      metaData['description'] = getGitDescription();
+    } else {
       metaData['description'] = program.buildDescription;
+    }
 
     if (program.appVersions)
       metaData['app_versions'] = program.appVersions;
@@ -218,7 +231,7 @@ function deploy() {
       putCommand += ' --silent';
     putCommand += ' -H "Content-Type: application/zip"';
     putCommand += ' -L "' + urlForPut + '"';
-    putCommand += ' --upload-file ' + BUILD_FILE_NAME;
+    putCommand += ' --upload-file ' + BUILD_FILE_PREFIX + BUILD_FILE_NAME;
 
     if (program.verbose) {
       console.log('putCommand:');
