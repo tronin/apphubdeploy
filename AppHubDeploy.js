@@ -72,7 +72,7 @@ function getGitDescription() {
 function checkOptionValues() {
   permittedValues = ["all", "debug", "none"];
 
-  if (program.target && !permittedValues.includes(program.target)) {
+  if (program.target && permittedValues && permittedValues.indexOf(program.target) === -1) {
     console.log('-t --target option needs to be one of ' + permittedValues.join(", ") + '.');
     console.log('');
     process.exit(1);
